@@ -1,0 +1,59 @@
+---
+ - name: Configuracion de Jboss EAP 7
+   hosts: all
+   tasks:
+      - name: Crear usuario
+        command: /opt/rh/eap7/jboss/bin/add-user.sh -u jbossadmin -r ManagementRealm -p BANBIF001% -g SuperUser -dc /opt/rh/eap7/standalone/configuration/ 
+      - name: Editar lineas management
+        replace:
+           path: /opt/rh/eap7/standalone/configuration/standalone-ha.xml
+           regexp: '{jboss.bind.address.management:127.0.0.1}"/>'
+           replace: '{jboss.bind.address.management:192.168.1.125}"/>'
+      - name: Editar linea public
+        replace:
+           path: /opt/rh/eap7/standalone/configuration/standalone-ha.xml
+           regexp: '{jboss.bind.address:127.0.0.1}"/>'
+           replace: '{jboss.bind.address:192.168.1.125}"/>'
+      - name: Editar linea privada
+        replace:
+           path: /opt/rh/eap7/standalone/configuration/standalone-ha.xml
+           regexp: '{jboss.bind.address.private:127.0.0.1}"/>'
+           replace: '{jboss.bind.address.private:192.168.1.125}"/>'
+      - name: Apagar Firewalld
+        service:
+          name: firewalld
+          state: stopped
+      - name: Copiar Archivos a default
+        copy:
+           src: /opt/rh/eap7/jboss/bin/init.d/jboss-eap.conf
+           dest: /etc/default/
+           remote_src: yes
+      - name: Copiar archivo a Init
+        copy:
+           src: /opt/rh/eap7/jboss/bin/init.d/jboss-eap-rhel.sh
+           dest: /etc/init.d/
+           remote_src: yes
+      - name: editar lineas .conf
+        blockinfile:
+           path: /etc/default/jboss-eap.conf
+           block: |
+              JAVA_HOME="/usr/java/jdk1.8.0_192-amd64"
+              JBOSS_HOME="/opt/rh/eap7/jboss"
+              JBOSS_USER=jboss-eap
+              JBOSS_MODE=standalone
+              JBOSS_CONFIG=standalone-ha.xml
+              JBOSS_CONSOLE_LOG="/var/log/jboss-eap/console.log"
+              JBOSS_OPTS="-Djboss.server.base.dir=/opt/rh/eap7/standalone -Djboss.server.default.config=standalone-ha.xml"
+      - name: editar lineas sh
+        replace:
+           path: /etc/init.d/jboss-eap-rhel.sh
+           regexp: 'JBOSS_HOME=/opt/$JBOSS_NAME'
+           replace: 'JBOSS_HOME=/opt/rh/eap7/jboss'
+      - name: dar permiso ejecucion
+        command: chmod +x /etc/init.d/jboss-eap-rhel.sh
+      - name: agregar servicio
+        command: chkconfig --add /etc/init.d/jboss-eap-rhel.sh
+      - name: encender on
+        command: chkconfig jboss-eap-rhel.sh on
+      - name: iniciar servicio
+        command: systemctl start jboss-eap-rhel.service
