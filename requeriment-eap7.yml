@@ -1,0 +1,34 @@
+---
+ - name: Instalacion de Jboss EAP 7.2
+   hosts: all
+   tasks:
+     - name: Copiar archivos a ruta tmp
+       copy: src=/instaladores dest=/tmp 
+     - name: instalar java
+       yum:
+         name: /tmp/instaladores/jdk-8u192-linux-x64.rpm
+         state: present
+     - name: Seleccion de Java Actualizado
+       alternatives:
+         name: java
+         path: /usr/java/jdk1.8.0_192-amd64/jre/bin/java
+     - name: Crear directorio si no existe
+       file:
+          path: /opt/rh/eap7
+          state: directory
+          mode: '0755'
+     - name: Descomprimir eap hacia /opt/rh/eap7/
+       unarchive:
+          src: /tmp/instaladores/jboss-eap-7.2.0.zip
+          dest: /opt/rh/eap7
+          remote_src: yes
+     - name: Renombrar eap7 a jboss
+       command: mv /opt/rh/eap7/jboss-eap-7.2 /opt/rh/eap7/jboss
+     - name: Mover Standalone
+       command: cp -r /opt/rh/eap7/jboss/standalone /opt/rh/eap7/
+     - name: Crear grupo jboss
+       group: name=jboss-eap
+     - name: Crear usuario jboss
+       user: name=jboss-eap group=jboss-eap
+     - name: Cambiar propietario  de JBoss la instalacion
+       file: path=/opt/rh/eap7/ owner=jboss-eap group=jboss-eap state=directory recurse=yes
